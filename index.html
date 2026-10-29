@@ -1,0 +1,1161 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Offline AI Document Assistant</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+/* === DESIGN PLAN ===
+   Layout: sticky sidebar nav + scrollable main, collapses to top tabs on mobile
+   Palette: deep navy base, warm off-white surface, electric teal accent, amber highlight
+   Type: IBM Plex Serif (display/hero) + IBM Plex Sans (UI/body) + IBM Plex Mono (code)
+   Tone: technical but approachable — privacy-first local AI tool
+*/
+
+:root {
+  --bg:        #0d1117;
+  --surface:   #161b22;
+  --surface2:  #1c2333;
+  --border:    #30363d;
+  --fg:        #e6edf3;
+  --fg-muted:  #8b949e;
+  --fg-subtle: #3d444d;
+  --accent:    #39d0b8;
+  --accent-dim:#1a6b60;
+  --amber:     #f0a54a;
+  --amber-dim: #6b4820;
+  --red:       #e05a5a;
+  --green:     #3fb950;
+  --font-display: 'IBM Plex Serif', Georgia, serif;
+  --font-body:    'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono:    'IBM Plex Mono', 'Courier New', monospace;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg:        #f6f8fa;
+    --surface:   #ffffff;
+    --surface2:  #f0f4f8;
+    --border:    #d0d7de;
+    --fg:        #1f2328;
+    --fg-muted:  #656d76;
+    --fg-subtle: #d0d7de;
+    --accent:    #0e7a6e;
+    --accent-dim:#d4f4f0;
+    --amber:     #b35a00;
+    --amber-dim: #fff3d6;
+    --red:       #c0392b;
+    --green:     #1a7f37;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg:        #f6f8fa;
+  --surface:   #ffffff;
+  --surface2:  #f0f4f8;
+  --border:    #d0d7de;
+  --fg:        #1f2328;
+  --fg-muted:  #656d76;
+  --fg-subtle: #d0d7de;
+  --accent:    #0e7a6e;
+  --accent-dim:#d4f4f0;
+  --amber:     #b35a00;
+  --amber-dim: #fff3d6;
+  --red:       #c0392b;
+  --green:     #1a7f37;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg:        #0d1117;
+  --surface:   #161b22;
+  --surface2:  #1c2333;
+  --border:    #30363d;
+  --fg:        #e6edf3;
+  --fg-muted:  #8b949e;
+  --fg-subtle: #3d444d;
+  --accent:    #39d0b8;
+  --accent-dim:#1a6b60;
+  --amber:     #f0a54a;
+  --amber-dim: #6b4820;
+  --red:       #e05a5a;
+  --green:     #3fb950;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.65;
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+
+/* ── Layout shell ── */
+.shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ── Top bar ── */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar-icon {
+  width: 34px; height: 34px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.topbar-icon svg { width: 18px; height: 18px; fill: #0d1117; }
+.topbar-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--fg);
+  line-height: 1.2;
+}
+.topbar-sub {
+  font-size: 11px;
+  color: var(--fg-muted);
+  letter-spacing: .03em;
+  margin-top: 1px;
+  font-family: var(--font-body);
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  white-space: nowrap;
+}
+.badge-amber {
+  background: var(--amber-dim);
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 25%, transparent);
+}
+.theme-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  transition: color .15s, border-color .15s;
+}
+.theme-btn:hover { color: var(--fg); border-color: var(--accent); }
+
+/* ── Sidebar nav ── */
+.sidenav {
+  padding-top: 28px;
+  padding-right: 20px;
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.sidenav-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+  margin-bottom: 8px;
+  padding-left: 10px;
+}
+.sidenav ul { list-style: none; margin-bottom: 20px; }
+.sidenav ul li a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: var(--fg-muted);
+  text-decoration: none;
+  transition: background .12s, color .12s;
+}
+.sidenav ul li a:hover { background: var(--surface2); color: var(--fg); }
+.sidenav ul li a.active { background: var(--accent-dim); color: var(--accent); font-weight: 500; }
+.sidenav ul li a .nav-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; opacity: .5; flex-shrink: 0;
+}
+
+/* ── Main content ── */
+main {
+  padding: 40px 0 80px 48px;
+  min-width: 0;
+}
+
+/* ── Sections ── */
+section { margin-bottom: 64px; scroll-margin-top: 24px; }
+
+.section-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+h2 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--fg);
+  text-wrap: balance;
+  margin-bottom: 16px;
+  line-height: 1.3;
+}
+h3 {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 10px;
+  margin-top: 24px;
+}
+p { color: var(--fg-muted); margin-bottom: 14px; max-width: 66ch; }
+p:last-child { margin-bottom: 0; }
+
+/* ── Hero ── */
+.hero {
+  padding: 20px 0 48px;
+  margin-bottom: 0;
+}
+.hero-headline {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+  margin-bottom: 16px;
+  color: var(--fg);
+}
+.hero-headline em {
+  font-style: italic;
+  color: var(--accent);
+}
+.hero-desc { font-size: 16px; color: var(--fg-muted); max-width: 58ch; margin-bottom: 24px; }
+
+.hero-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px; font-size: 12.5px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--fg-muted); white-space: nowrap;
+}
+.pill-accent { background: var(--accent-dim); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--accent); }
+.pill svg { width: 13px; height: 13px; fill: currentColor; }
+
+/* ── Callout note ── */
+.callout {
+  display: flex; gap: 12px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid;
+  margin: 20px 0;
+  max-width: 66ch;
+}
+.callout-warn {
+  background: var(--amber-dim);
+  border-color: color-mix(in srgb, var(--amber) 30%, transparent);
+  color: var(--amber);
+}
+.callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 13.5px; line-height: 1.55; color: inherit; }
+
+/* ── Feature grid ── */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  transition: border-color .15s;
+}
+.feature-card:hover { border-color: var(--accent); }
+.feature-card-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--accent-dim);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+.feature-card h4 {
+  font-size: 13.5px; font-weight: 600; color: var(--fg); margin-bottom: 5px;
+}
+.feature-card p { font-size: 12.5px; color: var(--fg-muted); margin: 0; }
+
+/* ── Tech stack table ── */
+.tech-table-wrap { overflow-x: auto; max-width: 100%; margin-top: 12px; }
+.tech-table {
+  width: 100%; border-collapse: collapse; font-size: 13.5px;
+  min-width: 480px;
+}
+.tech-table th {
+  text-align: left; padding: 8px 12px;
+  background: var(--surface2); color: var(--fg-muted);
+  font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.tech-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--fg-muted); }
+.tech-table tr:last-child td { border-bottom: none; }
+.tech-table td:first-child { color: var(--fg); font-weight: 500; }
+.tech-table td code { font-family: var(--font-mono); font-size: 12px; color: var(--accent); background: var(--accent-dim); padding: 1px 5px; border-radius: 4px; }
+
+/* ── Pipeline flow ── */
+.pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  margin: 20px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.pipeline-step {
+  flex: 1; min-width: 110px;
+  padding: 14px 12px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+  transition: background .15s;
+}
+.pipeline-step:last-child { border-right: none; }
+.pipeline-step:hover { background: var(--surface2); }
+.pipeline-step.active { background: var(--accent-dim); border-color: color-mix(in srgb, var(--accent) 20%, transparent); }
+.pipeline-step-num {
+  font-family: var(--font-mono);
+  font-size: 10px; color: var(--fg-subtle);
+  margin-bottom: 4px;
+}
+.pipeline-step-name {
+  font-size: 12px; font-weight: 600; color: var(--fg); line-height: 1.3;
+}
+.pipeline-step-tool {
+  font-family: var(--font-mono);
+  font-size: 11px; color: var(--accent); margin-top: 3px;
+}
+.pipeline-detail {
+  border-top: 1px solid var(--border);
+  padding: 16px;
+  font-size: 13.5px; color: var(--fg-muted); line-height: 1.6;
+  min-height: 60px;
+}
+
+/* ── Setup steps ── */
+.setup-steps { counter-reset: step; }
+.setup-step {
+  display: flex; gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.setup-step:last-child { border-bottom: none; }
+.step-num {
+  counter-increment: step;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--surface2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  color: var(--fg-muted); flex-shrink: 0; margin-top: 2px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.setup-step.done .step-num { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.step-body { min-width: 0; flex: 1; }
+.step-title { font-size: 14.5px; font-weight: 600; color: var(--fg); margin-bottom: 6px; }
+.step-desc { font-size: 13.5px; color: var(--fg-muted); margin-bottom: 10px; }
+
+/* ── Code blocks ── */
+.code-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 10px 0;
+  max-width: 100%;
+}
+.code-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 14px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted);
+}
+.copy-btn {
+  background: none; border: none; cursor: pointer; color: var(--fg-muted);
+  font-family: var(--font-mono); font-size: 11px; padding: 2px 6px;
+  border-radius: 4px; transition: color .12s, background .12s;
+  display: flex; align-items: center; gap: 4px;
+}
+.copy-btn:hover { color: var(--fg); background: var(--border); }
+.copy-btn.copied { color: var(--green); }
+pre {
+  font-family: var(--font-mono);
+  font-size: 13px; line-height: 1.6;
+  padding: 14px 16px;
+  overflow-x: auto;
+  color: var(--fg);
+}
+pre .kw { color: var(--amber); }
+pre .cm { color: var(--fg-subtle); font-style: italic; }
+pre .st { color: var(--accent); }
+
+/* ── File tree ── */
+.file-tree {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.8;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.ft-dir { color: var(--amber); }
+.ft-file { color: var(--fg); }
+.ft-comment { color: var(--fg-subtle); font-style: italic; }
+
+/* ── Troubleshoot accordion ── */
+.accordion { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.accordion-item { border-bottom: 1px solid var(--border); }
+.accordion-item:last-child { border-bottom: none; }
+.accordion-trigger {
+  width: 100%; background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  font-size: 14px; font-weight: 500; color: var(--fg); text-align: left;
+  gap: 12px; transition: background .12s;
+}
+.accordion-trigger:hover { background: var(--surface2); }
+.accordion-trigger[aria-expanded="true"] { color: var(--accent); }
+.acc-arrow { font-size: 12px; color: var(--fg-muted); transition: transform .2s; flex-shrink: 0; }
+.accordion-trigger[aria-expanded="true"] .acc-arrow { transform: rotate(180deg); color: var(--accent); }
+.accordion-body {
+  padding: 0 16px;
+  font-size: 13.5px; color: var(--fg-muted); line-height: 1.65;
+  max-height: 0; overflow: hidden; transition: max-height .28s ease, padding .28s;
+}
+.accordion-body.open { max-height: 400px; padding: 0 16px 16px; }
+
+/* ── Roadmap ── */
+.roadmap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.roadmap-col h3 { margin-top: 0; }
+.roadmap-list { list-style: none; }
+.roadmap-list li {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+}
+.roadmap-list li:last-child { border-bottom: none; }
+.roadmap-check { font-size: 13px; color: var(--green); flex-shrink: 0; }
+.roadmap-future { color: var(--fg-muted); }
+.roadmap-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; margin-top: 2px; }
+
+/* ── Limitations list ── */
+.limit-list { list-style: none; max-width: 66ch; }
+.limit-list li {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-size: 13.5px; color: var(--fg-muted);
+}
+.limit-list li:last-child { border-bottom: none; }
+.limit-bullet { color: var(--amber); flex-shrink: 0; font-size: 11px; margin-top: 3px; }
+
+/* ── Mobile nav tabs ── */
+.mobile-tabs {
+  display: none;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  gap: 0;
+  scrollbar-width: none;
+  position: sticky; top: 0; z-index: 20;
+}
+.mobile-tabs::-webkit-scrollbar { display: none; }
+.mobile-tab {
+  flex-shrink: 0; padding: 10px 16px;
+  font-size: 13px; color: var(--fg-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer; background: none; border-left: none; border-right: none; border-top: none;
+  transition: color .12s, border-color .12s; white-space: nowrap;
+}
+.mobile-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Responsive ── */
+@media (max-width: 720px) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+  }
+  .sidenav { display: none; }
+  .mobile-tabs { display: flex; }
+  main { padding: 24px 0 60px; }
+  .topbar { padding: 12px 0; }
+  .roadmap { grid-template-columns: 1fr; }
+  .hero-headline { font-size: 26px; }
+  .pipeline { flex-direction: column; }
+  .pipeline-step { border-right: none; border-bottom: 1px solid var(--border); }
+  .pipeline-step:last-child { border-bottom: none; }
+}
+</style>
+
+<div class="shell">
+
+  <!-- ── Top bar ── -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a5 5 0 0 1 5 5v1h1a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3h1V7a5 5 0 0 1 5-5zm0 9a2 2 0 0 0-2 2v2a2 2 0 0 0 4 0v-2a2 2 0 0 0-2-2zm0-7a3 3 0 0 0-3 3v1h6V7a3 3 0 0 0-3-3z"/></svg>
+      </div>
+      <div>
+        <div class="topbar-title">Offline AI Document Assistant</div>
+        <div class="topbar-sub">Privacy-first · Fully local · RAG-powered</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="badge">🟢 v1.0</span>
+      <span class="badge badge-amber">Python · Streamlit</span>
+      <button class="theme-btn" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">☀</button>
+    </div>
+  </header>
+
+  <!-- ── Mobile tabs ── -->
+  <nav class="mobile-tabs" id="mobileTabs" aria-label="Page sections">
+    <button class="mobile-tab active" data-section="overview">Overview</button>
+    <button class="mobile-tab" data-section="how-it-works">How It Works</button>
+    <button class="mobile-tab" data-section="tech-stack">Tech Stack</button>
+    <button class="mobile-tab" data-section="setup">Setup</button>
+    <button class="mobile-tab" data-section="usage">Usage</button>
+    <button class="mobile-tab" data-section="structure">Structure</button>
+    <button class="mobile-tab" data-section="troubleshoot">Troubleshoot</button>
+    <button class="mobile-tab" data-section="roadmap">Roadmap</button>
+  </nav>
+
+  <!-- ── Sidebar ── -->
+  <nav class="sidenav" id="sideNav" aria-label="Page sections">
+    <div class="sidenav-label">Contents</div>
+    <ul>
+      <li><a href="#overview" class="active"><span class="nav-dot"></span>Overview</a></li>
+      <li><a href="#how-it-works"><span class="nav-dot"></span>How It Works</a></li>
+      <li><a href="#tech-stack"><span class="nav-dot"></span>Tech Stack</a></li>
+      <li><a href="#setup"><span class="nav-dot"></span>Setup</a></li>
+      <li><a href="#usage"><span class="nav-dot"></span>Usage</a></li>
+      <li><a href="#structure"><span class="nav-dot"></span>Project Structure</a></li>
+      <li><a href="#troubleshoot"><span class="nav-dot"></span>Troubleshooting</a></li>
+      <li><a href="#roadmap"><span class="nav-dot"></span>Roadmap</a></li>
+    </ul>
+    <div class="sidenav-label" style="margin-top:8px">Extras</div>
+    <ul>
+      <li><a href="#limitations"><span class="nav-dot"></span>Limitations</a></li>
+      <li><a href="#privacy"><span class="nav-dot"></span>Privacy Notes</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Main ── -->
+  <main>
+
+    <!-- Hero -->
+    <section class="hero" id="overview">
+      <p class="section-eyebrow">Open-source · Runs on your machine</p>
+      <h1 class="hero-headline">Ask questions about any PDF —<br><em>entirely offline</em></h1>
+      <p class="hero-desc">
+        Upload a PDF, ask anything about its contents, and get an AI-generated answer backed by exact source passages — without sending a single byte to a cloud API.
+      </p>
+      <div class="hero-pills">
+        <span class="pill pill-accent"><svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v1h1a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3h1V7a5 5 0 0 1 5-5zm0 7a3 3 0 0 0-3 3v2a2 2 0 0 0 4 0v-2a3 3 0 0 0-3-3z"/></svg>No cloud LLM API</span>
+        <span class="pill">100% local inference</span>
+        <span class="pill">Semantic search (FAISS)</span>
+        <span class="pill">Page-level citations</span>
+        <span class="pill">Offline-capable</span>
+      </div>
+
+      <div class="callout callout-warn" style="margin-top:28px">
+        <div class="callout-icon">⚠</div>
+        <div class="callout-body">
+          Retrieved answers are not guaranteed to be correct. Always review the displayed source passages.
+          Scanned / image-only PDFs require OCR preprocessing before they can be searched.
+        </div>
+      </div>
+
+      <div class="section-eyebrow" style="margin-top:36px; margin-bottom:12px">Features</div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-card-icon">🔒</div>
+          <h4>Local LLM Inference</h4>
+          <p>Powered by Ollama running <code style="font-family:var(--font-mono);color:var(--accent);font-size:11.5px">qwen2.5:1.5b</code> — no internet required after setup.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon">📄</div>
+          <h4>PDF Upload & Extraction</h4>
+          <p>Upload any text-based PDF. PyMuPDF extracts text and preserves page numbers.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon">🔍</div>
+          <h4>Semantic Retrieval</h4>
+          <p>MiniLM embeddings + FAISS vector search pinpoint the most relevant passages.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon">📌</div>
+          <h4>Page References</h4>
+          <p>Every answer shows the source PDF pages it drew from, so you can verify.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon">⚙</div>
+          <h4>Similarity Threshold</h4>
+          <p>Tune a cosine-similarity cutoff to control how loosely context is retrieved.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon">🖥</div>
+          <h4>Streamlit UI</h4>
+          <p>Chat-style browser interface — no frontend framework needed.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="how-it-works">
+      <p class="section-eyebrow">Architecture</p>
+      <h2>How It Works</h2>
+      <p>Each question triggers a two-stage process: first retrieve the most relevant passages from your PDF, then send them — along with your question — to the local language model.</p>
+
+      <div class="pipeline" id="pipeline">
+        <div class="pipeline-step active" data-idx="0">
+          <div class="pipeline-step-num">01</div>
+          <div class="pipeline-step-name">PDF Upload</div>
+          <div class="pipeline-step-tool">Streamlit</div>
+        </div>
+        <div class="pipeline-step" data-idx="1">
+          <div class="pipeline-step-num">02</div>
+          <div class="pipeline-step-name">Text Extraction</div>
+          <div class="pipeline-step-tool">PyMuPDF</div>
+        </div>
+        <div class="pipeline-step" data-idx="2">
+          <div class="pipeline-step-num">03</div>
+          <div class="pipeline-step-name">Chunking</div>
+          <div class="pipeline-step-tool">chunk_text.py</div>
+        </div>
+        <div class="pipeline-step" data-idx="3">
+          <div class="pipeline-step-num">04</div>
+          <div class="pipeline-step-name">Embeddings</div>
+          <div class="pipeline-step-tool">MiniLM-L6-v2</div>
+        </div>
+        <div class="pipeline-step" data-idx="4">
+          <div class="pipeline-step-num">05</div>
+          <div class="pipeline-step-name">FAISS Search</div>
+          <div class="pipeline-step-tool">faiss-cpu</div>
+        </div>
+        <div class="pipeline-step" data-idx="5">
+          <div class="pipeline-step-num">06</div>
+          <div class="pipeline-step-name">Answer Gen</div>
+          <div class="pipeline-step-tool">Ollama / Qwen</div>
+        </div>
+        <div class="pipeline-step" data-idx="6">
+          <div class="pipeline-step-num">07</div>
+          <div class="pipeline-step-name">Display</div>
+          <div class="pipeline-step-tool">Streamlit UI</div>
+        </div>
+      </div>
+      <div class="pipeline-detail" id="pipelineDetail">
+        <strong>PDF Upload</strong> — The user selects the pre-indexed default PDF or uploads a new one via the Streamlit sidebar. Uploaded PDFs are processed in-memory and do not need to be saved permanently.
+      </div>
+    </section>
+
+    <!-- Tech stack -->
+    <section id="tech-stack">
+      <p class="section-eyebrow">Dependencies</p>
+      <h2>Technology Stack</h2>
+      <div class="tech-table-wrap">
+        <table class="tech-table">
+          <thead>
+            <tr><th>Component</th><th>Technology</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Language</td><td>Python 3.11 / 3.12</td><td>Application logic</td></tr>
+            <tr><td>UI</td><td>Streamlit</td><td>Browser-based chat interface</td></tr>
+            <tr><td>Local model runtime</td><td>Ollama</td><td>Serves the LLM locally</td></tr>
+            <tr><td>LLM</td><td><code>qwen2.5:1.5b</code></td><td>Generates answers from context</td></tr>
+            <tr><td>Embedding model</td><td><code>all-MiniLM-L6-v2</code></td><td>Converts text chunks to vectors</td></tr>
+            <tr><td>Vector search</td><td>FAISS (faiss-cpu)</td><td>Finds semantically similar chunks</td></tr>
+            <tr><td>PDF extraction</td><td>PyMuPDF</td><td>Extracts text and page numbers</td></tr>
+            <tr><td>Numerical processing</td><td>NumPy</td><td>Handles embedding arrays</td></tr>
+            <tr><td>HTTP client</td><td>Requests</td><td>Calls the local Ollama API</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Setup -->
+    <section id="setup">
+      <p class="section-eyebrow">Installation</p>
+      <h2>Setup Guide</h2>
+      <p>Takes about 5–10 minutes. You only need internet for the initial setup — after that, everything runs offline.</p>
+
+      <div class="setup-steps" id="setupSteps">
+
+        <div class="setup-step" data-step="0">
+          <div class="step-num" title="Mark complete">1</div>
+          <div class="step-body">
+            <div class="step-title">Open the project directory</div>
+            <div class="step-desc">Navigate to wherever you cloned or saved the project.</div>
+            <div class="code-block">
+              <div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="cd /d C:\Users\User\OfflineAIAssistant">⎘ Copy</button></div>
+              <pre>cd /d C:\Users\User\OfflineAIAssistant</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-step" data-step="1">
+          <div class="step-num" title="Mark complete">2</div>
+          <div class="step-body">
+            <div class="step-title">Create and activate a virtual environment</div>
+            <div class="step-desc">If you already have a working <code style="font-family:var(--font-mono);color:var(--accent)">venv</code>, activate it instead.</div>
+            <div class="code-block">
+              <div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="python -m venv venv&#10;venv\Scripts\activate.bat">⎘ Copy</button></div>
+              <pre>python -m venv venv
+venv\Scripts\activate.bat</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-step" data-step="2">
+          <div class="step-num" title="Mark complete">3</div>
+          <div class="step-body">
+            <div class="step-title">Install dependencies</div>
+            <div class="step-desc"><code style="font-family:var(--font-mono);color:var(--accent)">rank-bm25</code> is only needed if you added the optional BM25 hybrid retrieval code.</div>
+            <div class="code-block">
+              <div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="python -m pip install --upgrade pip&#10;pip install streamlit requests pymupdf sentence-transformers faiss-cpu numpy rank-bm25">⎘ Copy</button></div>
+              <pre>python -m pip install --upgrade pip
+pip install streamlit requests pymupdf \
+  sentence-transformers faiss-cpu numpy rank-bm25</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-step" data-step="3">
+          <div class="step-num" title="Mark complete">4</div>
+          <div class="step-body">
+            <div class="step-title">Download the Ollama LLM</div>
+            <div class="step-desc">If already installed, this command won't re-download. Verify with <code style="font-family:var(--font-mono);color:var(--accent)">ollama list</code>.</div>
+            <div class="code-block">
+              <div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="ollama pull qwen2.5:1.5b">⎘ Copy</button></div>
+              <pre>ollama pull qwen2.5:1.5b</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-step" data-step="4">
+          <div class="step-num" title="Mark complete">5</div>
+          <div class="step-body">
+            <div class="step-title">Download the embedding model</div>
+            <div class="step-desc">Run once while online. The app uses <code style="font-family:var(--font-mono);color:var(--accent)">local_files_only=True</code>, so the model must be cached before going offline.</div>
+            <div class="code-block">
+              <div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="python -c &quot;from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2'); print('Embedding model ready')&quot;">⎘ Copy</button></div>
+              <pre>python -c "from sentence_transformers import SentenceTransformer; \
+  SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2'); \
+  print('Embedding model ready')"</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-step" data-step="5">
+          <div class="step-num" title="Mark complete">6</div>
+          <div class="step-body">
+            <div class="step-title">Prepare the default PDF index</div>
+            <div class="step-desc">Place a text-based PDF at <code style="font-family:var(--font-mono);color:var(--accent)">documents/software_engineering.pdf</code>, then build the FAISS index.</div>
+            <div class="code-block">
+              <div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="python build_index.py">⎘ Copy</button></div>
+              <pre>python build_index.py</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-step" data-step="6">
+          <div class="step-num" title="Mark complete">7</div>
+          <div class="step-body">
+            <div class="step-title">Start Ollama and run the app</div>
+            <div class="step-desc">Make sure Ollama is running, then launch Streamlit. Open <strong>http://localhost:8501</strong> in your browser.</div>
+            <div class="code-block">
+              <div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="streamlit run app.py">⎘ Copy</button></div>
+              <pre>streamlit run app.py</pre>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Usage -->
+    <section id="usage">
+      <p class="section-eyebrow">Usage</p>
+      <h2>Using the App</h2>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px">
+          <h3 style="margin-top:0">Browser UI</h3>
+          <ol style="padding-left:18px;color:var(--fg-muted);font-size:13.5px;line-height:1.9">
+            <li>Open the app at <code style="font-family:var(--font-mono);color:var(--accent)">localhost:8501</code></li>
+            <li>Keep the default PDF or upload one in the sidebar</li>
+            <li>Wait for a newly uploaded PDF to index</li>
+            <li>Type a question and read the answer</li>
+            <li>Expand <em>View retrieved source passages</em> to verify</li>
+          </ol>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px">
+          <h3 style="margin-top:0">Terminal version</h3>
+          <p style="font-size:13.5px;margin-bottom:12px">A command-line interface is also included for quick queries without a browser.</p>
+          <div class="code-block" style="margin:0">
+            <div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="python ask_question.py">⎘ Copy</button></div>
+            <pre>python ask_question.py</pre>
+          </div>
+          <p style="font-size:12.5px;color:var(--fg-muted);margin-top:10px">Type a question when prompted. Enter <code style="font-family:var(--font-mono);color:var(--accent)">exit</code> to quit.</p>
+        </div>
+      </div>
+
+      <h3>Example questions</h3>
+      <p style="font-size:13.5px">For a software engineering document, try:</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        <span class="pill">What is cohesion?</span>
+        <span class="pill">Explain the Waterfall Model.</span>
+        <span class="pill">Disadvantages of the classical Waterfall Model?</span>
+        <span class="pill">Function-oriented vs object-oriented design?</span>
+      </div>
+    </section>
+
+    <!-- Project structure -->
+    <section id="structure">
+      <p class="section-eyebrow">Codebase</p>
+      <h2>Project Structure</h2>
+      <p>Your local folder may differ as the project evolves. Uploaded PDFs don't need to be stored permanently in <code style="font-family:var(--font-mono);color:var(--accent)">documents/</code>.</p>
+      <div class="file-tree">
+        <span class="ft-dir">OfflineAIAssistant/</span><br>
+        ├── <span class="ft-dir">documents/</span><br>
+        │&nbsp;&nbsp; └── <span class="ft-file">software_engineering.pdf</span><br>
+        ├── <span class="ft-dir">venv/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-comment"># virtual env — do not commit</span><br>
+        ├── <span class="ft-file">app.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-comment"># Streamlit web application</span><br>
+        ├── <span class="ft-file">read_pdf.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-comment"># PDF extraction + page metadata</span><br>
+        ├── <span class="ft-file">chunk_text.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-comment"># Sentence-aware chunking</span><br>
+        ├── <span class="ft-file">build_index.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-comment"># Builds the default FAISS index</span><br>
+        ├── <span class="ft-file">ask_question.py</span> &nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-comment"># Terminal RAG interface</span><br>
+        ├── <span class="ft-file">test_ollama.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-comment"># Tests Python-to-Ollama comms</span><br>
+        ├── <span class="ft-file">faiss_index.bin</span> &nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-comment"># Saved FAISS index</span><br>
+        └── <span class="ft-file">chunks.pkl</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-comment"># Saved chunks + page metadata</span>
+      </div>
+    </section>
+
+    <!-- Troubleshoot -->
+    <section id="troubleshoot">
+      <p class="section-eyebrow">Help</p>
+      <h2>Troubleshooting</h2>
+      <div class="accordion" id="accordion">
+
+        <div class="accordion-item">
+          <button class="accordion-trigger" aria-expanded="false" aria-controls="acc-1">
+            Ollama connection error
+            <span class="acc-arrow">▾</span>
+          </button>
+          <div class="accordion-body" id="acc-1">
+            <p style="margin-bottom:10px">Check that Ollama is installed and the model is present:</p>
+            <div class="code-block"><div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="ollama list">⎘ Copy</button></div><pre>ollama list</pre></div>
+            <p style="margin-top:10px">If needed, start Ollama from your installed application or launch the service, then retry.</p>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-trigger" aria-expanded="false" aria-controls="acc-2">
+            FAISS index or chunks are missing
+            <span class="acc-arrow">▾</span>
+          </button>
+          <div class="accordion-body" id="acc-2">
+            <p style="margin-bottom:10px">Rebuild the index:</p>
+            <div class="code-block"><div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="python build_index.py">⎘ Copy</button></div><pre>python build_index.py</pre></div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-trigger" aria-expanded="false" aria-controls="acc-3">
+            Index and chunks don't match
+            <span class="acc-arrow">▾</span>
+          </button>
+          <div class="accordion-body" id="acc-3">
+            <p style="margin-bottom:10px">Rebuild using the same <code style="font-family:var(--font-mono);color:var(--accent)">chunk_text.py</code>, embedding model, and PDF-processing code that the app uses:</p>
+            <div class="code-block"><div class="code-header"><span>cmd</span><button class="copy-btn" data-copy="python build_index.py">⎘ Copy</button></div><pre>python build_index.py</pre></div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-trigger" aria-expanded="false" aria-controls="acc-4">
+            Embedding model unavailable offline
+            <span class="acc-arrow">▾</span>
+          </button>
+          <div class="accordion-body" id="acc-4">
+            <p>Reconnect to the internet and re-run the embedding model download command from the setup section, then test offline again.</p>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-trigger" aria-expanded="false" aria-controls="acc-5">
+            No text extracted from a PDF
+            <span class="acc-arrow">▾</span>
+          </button>
+          <div class="accordion-body" id="acc-5">
+            <p>The PDF is likely scanned or image-only. OCR processing (e.g. Tesseract via <code style="font-family:var(--font-mono);color:var(--accent)">pdf2image</code> + <code style="font-family:var(--font-mono);color:var(--accent)">pytesseract</code>) is required before the document can be searched.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Roadmap -->
+    <section id="roadmap">
+      <p class="section-eyebrow">Future</p>
+      <h2>Roadmap</h2>
+      <div class="roadmap">
+        <div class="roadmap-col">
+          <h3>✅ Phase 2 — Complete</h3>
+          <ul class="roadmap-list">
+            <li><span class="roadmap-check">✓</span> Chunk storage</li>
+            <li><span class="roadmap-check">✓</span> Deduplication</li>
+            <li><span class="roadmap-check">✓</span> Manifest layer</li>
+            <li><span class="roadmap-check">✓</span> Semantic retrieval (FAISS)</li>
+            <li><span class="roadmap-check">✓</span> Page-level citations</li>
+            <li><span class="roadmap-check">✓</span> Streamlit UI</li>
+          </ul>
+        </div>
+        <div class="roadmap-col">
+          <h3>🔲 Phase 3 — Planned</h3>
+          <ul class="roadmap-list">
+            <li><span class="roadmap-dot"></span><span class="roadmap-future">Hybrid BM25 + FAISS retrieval</span></li>
+            <li><span class="roadmap-dot"></span><span class="roadmap-future">Reranking for retrieved passages</span></li>
+            <li><span class="roadmap-dot"></span><span class="roadmap-future">OCR support for scanned PDFs</span></li>
+            <li><span class="roadmap-dot"></span><span class="roadmap-future">Per-document index caching</span></li>
+            <li><span class="roadmap-dot"></span><span class="roadmap-future">Conversation-aware follow-ups</span></li>
+            <li><span class="roadmap-dot"></span><span class="roadmap-future">Answer evaluation &amp; grounding checks</span></li>
+            <li><span class="roadmap-dot"></span><span class="roadmap-future">Tests + reproducible dependency file</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Limitations -->
+    <section id="limitations">
+      <p class="section-eyebrow">Known Issues</p>
+      <h2>Limitations</h2>
+      <ul class="limit-list">
+        <li><span class="limit-bullet">▲</span>Vector similarity may miss relevant passages; it's a ranking signal, not a guarantee of correctness.</li>
+        <li><span class="limit-bullet">▲</span>Similarity scores are not probabilities — high score doesn't mean the answer is accurate.</li>
+        <li><span class="limit-bullet">▲</span>Page numbers identify the source of retrieved text; they don't independently verify every generated statement.</li>
+        <li><span class="limit-bullet">▲</span>Scanned PDFs require OCR preprocessing.</li>
+        <li><span class="limit-bullet">▲</span>A 1.5B-parameter model may produce incomplete or inaccurate answers on complex questions.</li>
+        <li><span class="limit-bullet">▲</span>Only one PDF can be active at a time.</li>
+        <li><span class="limit-bullet">▲</span>Follow-up questions don't carry conversational context unless memory logic is added.</li>
+      </ul>
+    </section>
+
+    <!-- Privacy -->
+    <section id="privacy">
+      <p class="section-eyebrow">Privacy &amp; Security</p>
+      <h2>Privacy Notes</h2>
+      <div style="display:grid;gap:12px;max-width:66ch">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;gap:12px;align-items:flex-start">
+          <div style="font-size:20px;flex-shrink:0">🌐</div>
+          <div>
+            <h4 style="font-size:13.5px;font-weight:600;color:var(--fg);margin-bottom:4px">Fully local by default</h4>
+            <p style="font-size:13px;margin:0">Ollama serves the model at <code style="font-family:var(--font-mono);color:var(--accent)">http://localhost:11434</code>. Embeddings and FAISS run on local files only. No document content leaves your machine during normal operation.</p>
+          </div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;gap:12px;align-items:flex-start">
+          <div style="font-size:20px;flex-shrink:0">📦</div>
+          <div>
+            <h4 style="font-size:13.5px;font-weight:600;color:var(--fg);margin-bottom:4px">Initial setup requires internet</h4>
+            <p style="font-size:13px;margin:0">Packages and model files need to be downloaded once. Normal operation works offline once everything is installed.</p>
+          </div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;gap:12px;align-items:flex-start">
+          <div style="font-size:20px;flex-shrink:0">⚠</div>
+          <div>
+            <h4 style="font-size:13.5px;font-weight:600;color:var(--fg);margin-bottom:4px">Don't commit sensitive documents</h4>
+            <p style="font-size:13px;margin:0">The <code style="font-family:var(--font-mono);color:var(--accent)">documents/</code> folder may contain personal or copyrighted files. Add it to <code style="font-family:var(--font-mono);color:var(--accent)">.gitignore</code> before pushing to a public repository.</p>
+          </div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;gap:12px;align-items:flex-start">
+          <div style="font-size:20px;flex-shrink:0">📜</div>
+          <div>
+            <h4 style="font-size:13.5px;font-weight:600;color:var(--fg);margin-bottom:4px">License not yet chosen</h4>
+            <p style="font-size:13px;margin:0">Select and add a license before publishing this project publicly. Do not claim a license until you have chosen one.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* ── Theme toggle ── */
+const root = document.documentElement;
+const btn = document.getElementById('themeToggle');
+function getTheme() {
+  try { return localStorage.getItem('theme') || 'system'; } catch { return 'system'; }
+}
+function applyTheme(t) {
+  if (t === 'dark') { root.dataset.theme = 'dark'; btn.textContent = '☀'; }
+  else if (t === 'light') { root.dataset.theme = 'light'; btn.textContent = '☾'; }
+  else { delete root.dataset.theme; btn.textContent = window.matchMedia('(prefers-color-scheme: dark)').matches ? '☀' : '☾'; }
+}
+applyTheme(getTheme());
+btn.addEventListener('click', () => {
+  const current = getTheme();
+  const next = current === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem('theme', next); } catch {}
+  applyTheme(next);
+});
+
+/* ── Copy buttons ── */
+document.querySelectorAll('.copy-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    const text = b.dataset.copy;
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = b.innerHTML;
+      b.innerHTML = '✓ Copied'; b.classList.add('copied');
+      setTimeout(() => { b.innerHTML = orig; b.classList.remove('copied'); }, 1800);
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch {}
+      document.body.removeChild(ta);
+    });
+  });
+});
+
+/* ── Pipeline interactive ── */
+const pipelineDetails = [
+  '<strong>PDF Upload</strong> — The user selects the pre-indexed default PDF or uploads a new one via the Streamlit sidebar. Uploaded PDFs are processed in-memory and do not need to be saved permanently.',
+  '<strong>Text Extraction</strong> — PyMuPDF reads each page and extracts raw text, preserving page number metadata that will be shown alongside any retrieved passage.',
+  '<strong>Chunking</strong> — <code style="font-family:var(--font-mono);color:var(--accent)">chunk_text.py</code> splits the document into overlapping, sentence-aware chunks. Sentence boundaries are respected to keep passages coherent.',
+  '<strong>Embeddings</strong> — <code style="font-family:var(--font-mono);color:var(--accent)">all-MiniLM-L6-v2</code> from Sentence Transformers converts each chunk into a 384-dimensional dense vector. Runs entirely locally.',
+  '<strong>FAISS Search</strong> — When a question arrives, it is embedded and compared against all chunk vectors. The top-k most similar passages are retrieved, optionally filtered by a cosine-similarity threshold.',
+  '<strong>Answer Generation</strong> — The question and retrieved passages are sent to Ollama\'s local API, which forwards them to Qwen 2.5 1.5B. The model generates a grounded answer.',
+  '<strong>Display</strong> — Streamlit shows the generated answer and lets the user expand a panel to inspect the exact source passages and their PDF page numbers.'
+];
+const pipelineDetail = document.getElementById('pipelineDetail');
+document.querySelectorAll('.pipeline-step').forEach(step => {
+  step.addEventListener('click', () => {
+    document.querySelectorAll('.pipeline-step').forEach(s => s.classList.remove('active'));
+    step.classList.add('active');
+    pipelineDetail.innerHTML = pipelineDetails[+step.dataset.idx];
+  });
+});
+
+/* ── Setup steps: click step number to mark done ── */
+document.querySelectorAll('.step-num').forEach(num => {
+  num.style.cursor = 'pointer';
+  const step = num.closest('.setup-step');
+  const idx = step.dataset.step;
+  try {
+    const done = JSON.parse(localStorage.getItem('steps_done') || '{}');
+    if (done[idx]) step.classList.add('done');
+  } catch {}
+  num.addEventListener('click', () => {
+    step.classList.toggle('done');
+    try {
+      const done = JSON.parse(localStorage.getItem('steps_done') || '{}');
+      done[idx] = step.classList.contains('done');
+      localStorage.setItem('steps_done', JSON.stringify(done));
+    } catch {}
+  });
+});
+
+/* ── Accordion ── */
+document.querySelectorAll('.accordion-trigger').forEach(trigger => {
+  trigger.addEventListener('click', () => {
+    const open = trigger.getAttribute('aria-expanded') === 'true';
+    document.querySelectorAll('.accordion-trigger').forEach(t => {
+      t.setAttribute('aria-expanded', 'false');
+      const bodyId = t.getAttribute('aria-controls');
+      document.getElementById(bodyId)?.classList.remove('open');
+    });
+    if (!open) {
+      trigger.setAttribute('aria-expanded', 'true');
+      const bodyId = trigger.getAttribute('aria-controls');
+      document.getElementById(bodyId)?.classList.add('open');
+    }
+  });
+});
+
+/* ── Sidebar nav highlight on scroll ── */
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.sidenav a');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const active = document.querySelector(`.sidenav a[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(s => observer.observe(s));
+
+/* ── Mobile tabs ── */
+const mobileTabs = document.querySelectorAll('.mobile-tab');
+mobileTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    mobileTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const target = document.getElementById(tab.dataset.section);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+</script>
+
+</body></html>
